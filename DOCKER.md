@@ -5,6 +5,9 @@ Run 9Router in a container. Published image: [`decolua/9router`](https://hub.doc
 ---
 
 # 👤 For Users
+# Cara RUN yang bener
+docker run -d -p 20128:20128 -v "$HOME/.9router:/app/data" -e DATA_DIR=/app/data --name 9router decolua/9router:latest
+Note: docker-compose up -d aja udah cukup
 
 ## Quick start
 

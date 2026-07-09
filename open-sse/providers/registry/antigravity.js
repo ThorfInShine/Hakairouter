@@ -1,6 +1,10 @@
 import { platform, arch } from "os";
 import { ANTIGRAVITY_OAUTH_CLIENT } from "../shared.js";
 
+// Inline IDE User-Agent (cannot import from appConstants — circular dependency)
+const _p = platform() === "win32" ? "windows" : platform();
+const _a = arch() === "x64" ? "amd64" : arch();
+const AG_IDE_UA = `antigravity/ide/2.1.1 ${_p}/${_a}`;
 export default {
   id: "antigravity",
   priority: 20,
@@ -26,7 +30,7 @@ export default {
     ],
     format: "antigravity",
     headers: {
-      "User-Agent": "antigravity/1.107.0 darwin/arm64",
+      "User-Agent": AG_IDE_UA,
     },
     retry: {
       "429": {
@@ -75,8 +79,7 @@ export default {
     apiVersion: "v1internal",
     loadCodeAssistEndpoint: "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist",
     onboardUserEndpoint: "https://cloudcode-pa.googleapis.com/v1internal:onboardUser",
-    loadCodeAssistUserAgent: "google-api-nodejs-client/9.15.1",
-    loadCodeAssistApiClient: "google-cloud-sdk vscode_cloudshelleditor/0.1",
+    loadCodeAssistUserAgent: AG_IDE_UA,
     refreshLeadMs: 300000,
   },
   features: {
