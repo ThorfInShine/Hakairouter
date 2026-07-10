@@ -6,7 +6,6 @@ services:
     restart: always
     ports:
       - "20128:20128"
-      - "443:443"
     volumes:
       - 9router-data:/app/data
     env_file:
