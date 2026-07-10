@@ -120,7 +120,7 @@ export default function Sidebar({ onClose }) {
         <div className="px-6 py-4 flex flex-col gap-2">
           <Link href="/dashboard" className="flex items-center gap-3">
             <img
-              src="/icons/icon-512.ico"
+              src="/assets/rikka.gif"
               alt="Hakairoute"
               className="size-9 rounded-[10px] shadow-[var(--shadow-warm)]"
             />
