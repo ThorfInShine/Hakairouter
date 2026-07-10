@@ -15,6 +15,7 @@ import {
 } from "@/lib/tunnel";
 import { getMitmStatus, startMitm, loadEncryptedPassword, initDbHooks, restoreToolDNS, removeAllDNSEntriesSync } from "@/mitm/manager";
 import { startQuotaAutoPing } from "@/shared/services/quotaAutoPing";
+import { startQuotaAutoDisable } from "@/shared/services/quotaAutoDisable";
 import { syncToJson as syncMitmAliasCache } from "@/lib/mitmAliasCache";
 
 // Inject correct paths and DB hooks into manager.js (CJS) from ESM context
@@ -90,6 +91,7 @@ export async function initializeApp() {
     startNetworkMonitor();
     autoStartMitm();
     startQuotaAutoPing();
+    startQuotaAutoDisable();
   } catch (error) {
     console.error("[InitApp] Error:", error);
   }

@@ -128,9 +128,11 @@ export default function ProviderLimits() {
   const [loading, setLoading] = useState({});
   const [errors, setErrors] = useState({});
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [autoTurnOff, setAutoTurnOff] = useState(false);
   const [autoPingMaps, setAutoPingMaps] = useState({ claude: {}, codex: {} });
   const [lastUpdated, setLastUpdated] = useState(null);
   const [hasHydratedAutoRefresh, setHasHydratedAutoRefresh] = useState(false);
+  const [hasHydratedAutoTurnOff, setHasHydratedAutoTurnOff] = useState(false);
   const [refreshingAll, setRefreshingAll] = useState(false);
   const [countdown, setCountdown] = useState(60);
   const [connectionsLoading, setConnectionsLoading] = useState(true);
@@ -168,6 +170,7 @@ export default function ProviderLimits() {
   const intervalRef = useRef(null);
   const countdownRef = useRef(null);
   const tickCountRef = useRef(0);
+  const prevRefreshingRef = useRef(false);
 
   const fetchConnections = useCallback(
     async (targetPage = page) => {
@@ -526,6 +529,19 @@ export default function ProviderLimits() {
     setHasHydratedAutoRefresh(true);
   }, []);
 
+  // Load auto-turn-off from API settings
+  useEffect(() => {
+    fetch("/api/settings", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : {}))
+      .then((s) => {
+        setAutoTurnOff(s?.autoTurnOffDepleted?.enabled === true);
+        setHasHydratedAutoTurnOff(true);
+      })
+      .catch(() => {
+        setHasHydratedAutoTurnOff(true);
+      });
+  }, []);
+
   // Persist auto-refresh preference
   useEffect(() => {
     if (typeof window === "undefined" || !hasHydratedAutoRefresh) return;
@@ -564,6 +580,23 @@ export default function ProviderLimits() {
       setAutoPingMaps(previous);
     }
   }, [autoPingMaps]);
+
+  const toggleAutoTurnOff = useCallback(async () => {
+    const previous = autoTurnOff;
+    const nextValue = !autoTurnOff;
+    setAutoTurnOff(nextValue);
+    try {
+      await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          autoTurnOffDepleted: { enabled: nextValue },
+        }),
+      });
+    } catch {
+      setAutoTurnOff(previous);
+    }
+  }, [autoTurnOff]);
 
   // Auto-refresh interval
   useEffect(() => {
@@ -636,6 +669,46 @@ export default function ProviderLimits() {
       ),
     [connections, quotaData, expiringFirst, providerFilter, quotaSortMode],
   );
+
+  // Auto turn off depleted connections when refresh completes
+  useEffect(() => {
+    const wasRefreshing = prevRefreshingRef.current;
+    prevRefreshingRef.current = refreshingAll;
+
+    // Only trigger when transitioning from refreshing to not refreshing
+    if (!wasRefreshing || refreshingAll || !autoTurnOff || !hasHydratedAutoTurnOff) {
+      return;
+    }
+
+    const checkAndDisableDepleted = async () => {
+      const depletedIds = sortedConnections
+        .filter((conn) => {
+          if (!(conn.isActive ?? true)) return false;
+          const quotas = quotaData[conn.id]?.quotas;
+          if (!quotas?.length) return false;
+          return quotas.some((q) => {
+            if (!q.total || q.total <= 0) return false;
+            return calculatePercentage(q.used, q.total) <= DEPLETED_QUOTA_THRESHOLD;
+          });
+        })
+        .map((conn) => conn.id);
+
+      if (depletedIds.length > 0) {
+        await Promise.all(
+          depletedIds.map((id) =>
+            fetch(`/api/providers/${id}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ isActive: false }),
+            }),
+          ),
+        );
+        await reconcileConnectionsPage(fetchConnections, page);
+      }
+    };
+
+    checkAndDisableDepleted();
+  }, [refreshingAll, autoTurnOff, hasHydratedAutoTurnOff, sortedConnections, quotaData, fetchConnections, page]);
 
   // Connection is depleted when any quota entry hit the threshold
   const isConnectionDepleted = (conn) => {
@@ -911,6 +984,24 @@ export default function ProviderLimits() {
             </span>
             <span className="hidden sm:inline">Turn on Available</span>
           </button>
+
+          {/* Auto turn off toggle */}
+          {hasHydratedAutoTurnOff && (
+            <button
+              onClick={toggleAutoTurnOff}
+              className="flex h-8 shrink-0 items-center gap-1 rounded-lg border border-black/10 px-2 text-xs transition-colors hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/5"
+              title={autoTurnOff ? "Auto turn off enabled - connections with ≤2% quota will be disabled automatically" : "Enable auto turn off - automatically disable connections when quota reaches ≤2%"}
+            >
+              <span
+                className={`material-symbols-outlined text-[14px] ${
+                  autoTurnOff ? "text-primary" : "text-text-muted"
+                }`}
+              >
+                {autoTurnOff ? "check_circle" : "radio_button_unchecked"}
+              </span>
+              <span className="hidden text-text-primary sm:inline">Auto Turn Off</span>
+            </button>
+          )}
 
           {/* Auto-refresh toggle */}
           <button
