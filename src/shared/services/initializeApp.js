@@ -104,6 +104,7 @@ async function runHeavyStartup() {
   // Sync mitmAlias DB → JSON cache so standalone MITM server can read it
   syncMitmAliasCache().catch(() => {});
 
+  try {
     startWatchdog();
     startNetworkMonitor();
     autoStartMitm();
