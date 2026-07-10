@@ -9,7 +9,7 @@ import { getAntigravityUsage } from "open-sse/services/usage/google.js";
 import { refreshAndUpdateCredentials } from "@/app/api/usage/[connectionId]/route.js";
 
 const DEPLETED_THRESHOLD_PERCENT = 2;
-const CHECK_INTERVAL_MS = 3 * 60 * 1000; // 5 minutes
+const CHECK_INTERVAL_MS = 3 * 60 * 1000; // 3 minutes
 const CONCURRENCY_LIMIT = 10; // Process up to 10 connections in parallel
 const CONNECTION_TIMEOUT_MS = 30000; // 30 seconds per connection
 
